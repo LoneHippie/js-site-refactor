@@ -1,14 +1,6 @@
 "use strict";
 
-async function FetchRickAndMortyData(url) {
-    const responseData = await fetch(url);
-
-    if (responseData.ok) {
-        return await responseData.json();
-    } else {
-        return alert(`HTTP-Error: ${responseData.status}`);
-    }
-}
+import { fetchRickAndMortyData } from "./utils/api.js";
 
 async function EpisodeModalConstructor() {
     const allEpisodesBySeason = await EpisodesBySeason();
@@ -78,13 +70,13 @@ function setElementAttributes(element, attributes) {
 async function FetchAllEpisodes() {
     const completeEpisodeList = [];
     const episodeBaseUrl = "https://rickandmortyapi.com/api/episode";
-    const pagesOfEpisodes = await FetchRickAndMortyData(episodeBaseUrl);
+    const pagesOfEpisodes = await fetchRickAndMortyData(episodeBaseUrl);
     completeEpisodeList.push(pagesOfEpisodes.results)
     const numberOfPages = pagesOfEpisodes.info.pages;
 
     for (let i = 2; i <= numberOfPages; i++) {
         const nextPageUrl = `${episodeBaseUrl}?page=${i}`
-        const episodesOnEachPage = await FetchRickAndMortyData(nextPageUrl);
+        const episodesOnEachPage = await fetchRickAndMortyData(nextPageUrl);
         completeEpisodeList.push(episodesOnEachPage.results)
     }
 

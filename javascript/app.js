@@ -1,43 +1,17 @@
-'use strict';
+import { fetchRickAndMortyData, paginatedFetchEndpoint } from "./utils/api.js";
+import { cardConstructors, paginationButtonGroupBuilder } from "./utils/generators.js";
 
 let currentPage = 0
 
-async function FetchRickAndMortyData(url) {
-    const responseData = await fetch(url);
-
-    if (responseData.ok) {
-        return await responseData.json();
-    } else {
-        return alert(`HTTP-Error: ${responseData.status}`);
-    }
-}
-
-
-async function FetchAllCharacters() {
-    const completeCharactersList = [];
-    let characterBaseUrl = "https://rickandmortyapi.com/api/character/";
-    const numOfPages = 42;
-
-    for (let i = 1; i <= numOfPages; i++) {
-        const charactersOnEachPage = await FetchRickAndMortyData(characterBaseUrl);
-        completeCharactersList.push(charactersOnEachPage.results);
-        characterBaseUrl = charactersOnEachPage.info.next;
-    }
-
-    return completeCharactersList.flat(1);
-}
-
-
-function RandomUrlConstructor(length) {
+const randomUrlConstructor = (length) => {
     const randomNumArray = Array.from({ length: length }, () => Math.floor(Math.random() * 826) + 1);
     return `https://rickandmortyapi.com/api/character/${randomNumArray}`
 }
 
-
 async function dynamicCarouselConstructor() {
 
-    const randomizedCharacters = RandomUrlConstructor(3);
-    const data = await FetchRickAndMortyData(randomizedCharacters);
+    const randomizedCharacters = randomUrlConstructor(3);
+    const data = await fetchRickAndMortyData(randomizedCharacters);
 
     const carouselInner = document.getElementById('carouselInner');
 
@@ -73,65 +47,26 @@ async function dynamicCarouselConstructor() {
     }
 }
 
+//needs to be bound to window object since this file is being served as a module
+window.characterBuilder = async(pageNumber = 0) => {
 
-async function CharacterBuilder(pageNumber = 0) {
-
-    const data = await CharacterCollectionConstructor();
+    const data = await characterCollectionConstructor();
     const cardRow = document.getElementById('cardrow');
     cardRow.replaceChildren();
 
     for (const character of data[pageNumber]) {
-
-        const card = CharacterCardConstructor(character);
+        const card = cardConstructors.characterCard(character);
         cardRow.appendChild(card);
     }
     currentPage = pageNumber;
 
-    Paginator5000();
+    paginator5000();
     pageButtonGroupSwapper();
 }
 
 
-function CharacterCardConstructor(characterInfo) {
-    const card = document.createElement('div');
-    card.classList.add("card", "bg-info", "bg-opacity-75", "text-black", "mb-3", "shadow", "ms-3", "p-1");
-    card.setAttribute("style", "max-width: 540px;");
-
-    const cardInnerRow = document.createElement('div');
-    cardInnerRow.classList.add("row", "g-0");
-
-    const cardImageColumn = document.createElement('div');
-    cardImageColumn.classList.add("col-md-4");
-
-    const cardImage = document.createElement('img');
-    cardImage.classList.add("img-thumbnail", "rounded-start");
-    cardImage.setAttribute("src", characterInfo.image)
-
-    const cardBodyColumn = document.createElement('div');
-    cardBodyColumn.classList.add("col-md-8")
-
-    const cardBody = document.createElement('div');
-    cardBody.classList.add("card-body", "p-1", "ms-1");
-    cardBody.innerHTML =
-        `
-        <h5 class="card-title text-white" style="text-shadow: 2px 2px 2px #000000;">${characterInfo.name}</h5>
-        <p class="card-text mb-1"><b>Status:</b> ${characterInfo.status}</p> 
-        <p class="card-text mb-1"><b>Species:</b> ${characterInfo.species}</p>
-        <p class="card-text mb-1"><b>Gender:</b> ${characterInfo.gender}</p>
-        <p class="card-text mb-1"><b>Origin:</b> ${characterInfo.origin['name'] || "unknown"}</p>
-        `
-
-    cardImageColumn.appendChild(cardImage);
-    cardBodyColumn.appendChild(cardBody);
-    cardInnerRow.append(cardImageColumn, cardBodyColumn);
-    card.appendChild(cardInnerRow);
-    return card;
-}
-
-
-async function CharacterCollectionConstructor() {
-    const rickAndMortyUrl = "https://rickandmortyapi.com/api/character/"
-    const allCharacters = await FetchAllCharacters(rickAndMortyUrl);
+async function characterCollectionConstructor() {
+    const allCharacters = await paginatedFetchEndpoint({endpoint: "character", pageCount: 42})
 
     const groupedCharacters = [];
     for (let i = 0; i < allCharacters.length; i += 59) {
@@ -143,13 +78,13 @@ async function CharacterCollectionConstructor() {
 
 function pageChanger(operation) {
     if (currentPage > 0 || currentPage < 13) {
-        CharacterBuilder((currentPage + operation));
+        characterBuilder((currentPage + operation));
         pageButtonGroupSwapper();
     }
 }
 
 
-function Paginator5000() {
+function paginator5000() {
     const previousButton = document.getElementById("prev");
     const nextButton = document.getElementById("next");
 
@@ -167,63 +102,15 @@ function Paginator5000() {
 }
 
 
-function PaginationButtonGroupBuilder(buttonGroup = 0) {
-    const groupedButtonList = PaginationListConstructor();
-    const paginationList = document.getElementById("paginationList");
-    const paginationListArray = Array.from(paginationList.children);
-
-    if (paginationList.childElementCount > 2) {
-        paginationListArray.splice(1, 7, ...groupedButtonList[buttonGroup])
-    } else {
-        paginationListArray.splice(1, 0, ...groupedButtonList[buttonGroup])
-    }
-
-    paginationList.replaceChildren();
-    paginationList.append(...paginationListArray)
-}
-
-
 function pageButtonGroupSwapper() {
     if (currentPage > 0 && currentPage % 7 === 0) {
-        PaginationButtonGroupBuilder(currentPage / 7);
+        paginationButtonGroupBuilder(currentPage / 7);
     } else {
-        PaginationButtonGroupBuilder(0);
+        paginationButtonGroupBuilder(0);
     }
 }
 
-
-function PaginationListConstructor() {
-    const paginationListContainer = document.createElement("div");
-
-    for (let i = 1; i <= 14; i++) {
-        const pageButton = document.createElement("li");
-        pageButton.classList.add("page-item");
-
-        const pageButtonAnchor = document.createElement("a");
-        pageButtonAnchor.classList.add("page-link");
-        pageButtonAnchor.setAttribute("onclick", `CharacterBuilder(${i - 1})`)
-        pageButtonAnchor.innerHTML = `${i}`
-
-        pageButton.appendChild(pageButtonAnchor);
-        paginationListContainer.appendChild(pageButton);
-    }
-
-    return PaginationCollectionConstructor(paginationListContainer.children);
-}
-
-
-function PaginationCollectionConstructor(paginationListChildren) {
-    const groupedPaginationButtons = [];
-    const paginationListArray = Array.from(paginationListChildren);
-    for (let i = 0; i < paginationListChildren.length; i += 7) {
-        groupedPaginationButtons.push(paginationListArray.slice(i, i + 7));
-    }
-
-    return groupedPaginationButtons;
-}
-
-
-function CardSearchFilter() {
+function cardSearchFilter() {
     const searchInput = document.getElementById("navsearch").value.replace(/[^a-z0-9]/gi, '').toLowerCase().trim();
     const rowOfCards = document.getElementById("cardrow").children;
     console.log(searchInput);
@@ -238,6 +125,6 @@ function CardSearchFilter() {
     }
 }
 
-PaginationButtonGroupBuilder();
+paginationButtonGroupBuilder();
 dynamicCarouselConstructor();
-CharacterBuilder();
+characterBuilder();
